@@ -1,5 +1,4 @@
 name: Build Junior APK
-
 on:
   push:
     branches: [ main ]
