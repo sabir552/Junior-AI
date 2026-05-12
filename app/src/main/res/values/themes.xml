@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <style name="Theme.Junior" parent="android:Theme.Material.NoTitleBar.Fullscreen">
-        <item name="android:windowBackground">@android:color/black</item>
-        <item name="android:statusBarColor">#050510</item>
-        <item name="android:navigationBarColor">#050510</item>
-    </style>
-</resources>
