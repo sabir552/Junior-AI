@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Junior</string>
+    <string name="accessibility_description">Junior AI ko device control karne ki permission de</string>
+</resources>
