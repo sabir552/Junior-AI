@@ -7,6 +7,7 @@ import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import android.util.Log
 import java.util.Locale
 
@@ -29,7 +30,11 @@ class VoiceManager(private val context: Context) {
     private fun initTts() {
         tts = TextToSpeech(context) { status ->
             if (status == TextToSpeech.SUCCESS) {
-                tts?.language = Locale("ur", "PK")
+                val result = tts?.setLanguage(Locale("ur", "PK"))
+                if (result == TextToSpeech.LANG_MISSING_DATA ||
+                    result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                    tts?.setLanguage(Locale.ENGLISH)
+                }
                 tts?.setSpeechRate(0.9f)
                 tts?.setPitch(0.95f)
                 Log.d("Junior", "TTS ready")
@@ -41,8 +46,9 @@ class VoiceManager(private val context: Context) {
     // SPEAK
     fun speak(text: String, onDone: (() -> Unit)? = null) {
         val clean = text
-            .replace("*", "").replace("#", "")
-            .replace(Regex("[❌✅🔋📸🎤🤖⚡🔵🟢🔴]"), "")
+            .replace("*", "")
+            .replace("#", "")
+            .replace(Regex("[❌✅🔋📸🎤🤖⚡🔵🟢🔴🔮🌟🧠📱]"), "")
             .trim()
 
         if (clean.isEmpty()) {
@@ -53,20 +59,22 @@ class VoiceManager(private val context: Context) {
         isTtsSpeaking = true
         Log.d("Junior", "Speaking: $clean")
 
-        tts?.speak(clean, TextToSpeech.QUEUE_FLUSH, null, "junior_utterance")
-
-        tts?.setOnUtteranceProgressListener(object :
-            android.speech.tts.UtteranceProgressListener() {
-            override fun onStart(utteranceId: String?) { isTtsSpeaking = true }
+        tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+            override fun onStart(utteranceId: String?) {
+                isTtsSpeaking = true
+            }
             override fun onDone(utteranceId: String?) {
                 isTtsSpeaking = false
                 onDone?.invoke()
             }
+            @Deprecated("Deprecated in Java")
             override fun onError(utteranceId: String?) {
                 isTtsSpeaking = false
                 onDone?.invoke()
             }
         })
+
+        tts?.speak(clean, TextToSpeech.QUEUE_FLUSH, null, "junior_utterance")
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -91,31 +99,44 @@ class VoiceManager(private val context: Context) {
         speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context)
 
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(
+                RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+            )
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ur-PK")
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "ur-PK")
-            putExtra(RecognizerIntent.EXTRA_ALSO_LANGUAGE_PREFERENCE, "en-US")
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1500L)
-            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1500L)
+            putExtra(
+                RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS,
+                1500L
+            )
+            putExtra(
+                RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS,
+                1500L
+            )
             if (isWakeWord) {
-                putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 500L)
+                putExtra(
+                    RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS,
+                    500L
+                )
             }
         }
 
         speechRecognizer?.setRecognitionListener(object : RecognitionListener {
+
             override fun onReadyForSpeech(params: Bundle?) {
-                Log.d("Junior", if (isWakeWord) "Wake listening..." else "Command listening...")
+                Log.d("Junior",
+                    if (isWakeWord) "Wake listening..." else "Command listening...")
             }
 
             override fun onPartialResults(partialResults: Bundle?) {
                 val partial = partialResults
                     ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                    ?.firstOrNull()?.lowercase() ?: return
+                    ?.firstOrNull()
+                    ?.lowercase() ?: return
 
                 if (isWakeWord && containsWakeWord(partial)) {
-                    Log.d("Junior", "Wake word detected in partial!")
+                    Log.d("Junior", "Wake word in partial!")
                     speechRecognizer?.stopListening()
                     onWakeWord?.invoke()
                 }
@@ -132,11 +153,9 @@ class VoiceManager(private val context: Context) {
                     if (containsWakeWord(text.lowercase())) {
                         onWakeWord?.invoke()
                     } else {
-                        // Dobara sun
                         startWakeWordListening()
                     }
                 } else {
-                    // Command mila
                     val command = text
                         .replace("جونیار", "", ignoreCase = true)
                         .replace("junior", "", ignoreCase = true)
@@ -154,15 +173,17 @@ class VoiceManager(private val context: Context) {
                     SpeechRecognizer.ERROR_NO_MATCH -> "no_match"
                     SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "timeout"
                     SpeechRecognizer.ERROR_AUDIO -> "audio_error"
+                    SpeechRecognizer.ERROR_CLIENT -> "client_error"
+                    SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "busy"
                     else -> "error_$error"
                 }
                 Log.d("Junior", "STT Error: $msg")
 
                 if (isWakeWord) {
-                    // Error pe bhi dobara sun — hamesha active
-                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                        if (!isTtsSpeaking) startWakeWordListening()
-                    }, 500)
+                    android.os.Handler(android.os.Looper.getMainLooper())
+                        .postDelayed({
+                            if (!isTtsSpeaking) startWakeWordListening()
+                        }, 800)
                 } else {
                     onError?.invoke("Dobara boliye sir")
                 }
@@ -179,6 +200,10 @@ class VoiceManager(private val context: Context) {
             speechRecognizer?.startListening(intent)
         } catch (e: Exception) {
             Log.e("Junior", "Listen error: ${e.message}")
+            if (isWakeWord) {
+                android.os.Handler(android.os.Looper.getMainLooper())
+                    .postDelayed({ startWakeWordListening() }, 1000)
+            }
         }
     }
 
@@ -187,7 +212,8 @@ class VoiceManager(private val context: Context) {
     private fun containsWakeWord(text: String): Boolean {
         val wakeWords = listOf(
             "junior", "جونیار", "جونئیر",
-            "junio", "yunior", "younior"
+            "junio", "yunior", "younior",
+            "juniur", "juniar"
         )
         return wakeWords.any { text.contains(it, ignoreCase = true) }
     }
