@@ -8,16 +8,47 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.*
-import androidx.compose.foundation.layout.*
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.border
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
@@ -52,8 +83,6 @@ class MainActivity : ComponentActivity() {
     private var isSpeaking = mutableStateOf(false)
     private var showSettings = mutableStateOf(false)
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // PERMISSION LAUNCHER — Fix 3
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -66,22 +95,27 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         ApiConfig.init(this)
 
         if (!ApiConfig.keysSet()) {
             showSettings.value = true
-            messages.add(ChatMessage(
-                "Salam sir! Pehle API keys enter karein Settings mein. ⚙️",
-                false, "JUNIOR"
-            ))
+            messages.add(
+                ChatMessage(
+                    "Salam sir! Pehle API keys enter karein Settings mein.",
+                    false,
+                    "JUNIOR"
+                )
+            )
         } else {
-            messages.add(ChatMessage(
-                "Salam sir! Mein Junior hu. Activate karein! 🚀",
-                false, "JUNIOR"
-            ))
+            messages.add(
+                ChatMessage(
+                    "Salam sir! Mein Junior hu. Activate karein!",
+                    false,
+                    "JUNIOR"
+                )
+            )
         }
 
         setContent {
@@ -94,10 +128,13 @@ class MainActivity : ComponentActivity() {
                             hf, mistral, together, cerebras, deepseek
                         )
                         showSettings.value = false
-                        messages.add(ChatMessage(
-                            "Keys save ho gayi sir! Ab activate karein. ✅",
-                            false, "JUNIOR"
-                        ))
+                        messages.add(
+                            ChatMessage(
+                                "Keys save ho gayi sir! Ab activate karein.",
+                                false,
+                                "JUNIOR"
+                            )
+                        )
                     }
                 )
             } else {
@@ -114,8 +151,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // RESUME — Accessibility se wapas aane pe
     override fun onResume() {
         super.onResume()
         if (ApiConfig.keysSet() && !JuniorService.isRunning) {
@@ -125,8 +160,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // PERMISSIONS — Fix 1
     private fun checkAndRequestPermissions() {
         val permissions = mutableListOf(
             Manifest.permission.RECORD_AUDIO,
@@ -135,7 +168,7 @@ class MainActivity : ComponentActivity() {
             Manifest.permission.CALL_PHONE,
             Manifest.permission.READ_CONTACTS,
             Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.VIBRATE,
+            Manifest.permission.VIBRATE
         )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             permissions.add(Manifest.permission.POST_NOTIFICATIONS)
@@ -150,8 +183,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // ACCESSIBILITY — Fix 2
     private fun checkAccessibility() {
         if (!isAccessibilityEnabled()) {
             showAccessibilityDialog()
@@ -161,7 +192,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun isAccessibilityEnabled(): Boolean {
-        val service = "${packageName}/${JuniorAccessibilityService::class.java.canonicalName}"
+        val service =
+            "${packageName}/${JuniorAccessibilityService::class.java.canonicalName}"
         val enabledServices = android.provider.Settings.Secure.getString(
             contentResolver,
             android.provider.Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
@@ -173,7 +205,8 @@ class MainActivity : ComponentActivity() {
         android.app.AlertDialog.Builder(this)
             .setTitle("Accessibility Permission Chahiye")
             .setMessage(
-                "Junior ko full device control ke liye Accessibility Service enable karni hogi.\n\n" +
+                "Junior ko full device control ke liye " +
+                "Accessibility Service enable karni hogi.\n\n" +
                 "1. Settings khulenge\n" +
                 "2. Junior AI dhundho\n" +
                 "3. Enable karein\n" +
@@ -192,8 +225,6 @@ class MainActivity : ComponentActivity() {
             .show()
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // START SERVICE
     private fun startJuniorService() {
         if (!ApiConfig.keysSet()) {
             showSettings.value = true
@@ -205,19 +236,21 @@ class MainActivity : ComponentActivity() {
         } else {
             startService(intent)
         }
-        statusText.value = "\"Junior\" boliye..."
-        messages.add(ChatMessage(
-            "Online aur taiyar hu sir! Bas 'Junior' boliye. 🎤",
-            false, "JUNIOR"
-        ))
+        statusText.value = "Junior boliye..."
+        messages.add(
+            ChatMessage(
+                "Online aur taiyar hu sir! Bas Junior boliye.",
+                false,
+                "JUNIOR"
+            )
+        )
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // TEXT COMMAND
     private fun handleTextCommand(text: String) {
         if (!ApiConfig.keysSet()) {
-            messages.add(ChatMessage(
-                "Pehle API keys enter karein sir! ⚙️", false, "JUNIOR"))
+            messages.add(
+                ChatMessage("Pehle API keys enter karein sir!", false, "JUNIOR")
+            )
             showSettings.value = true
             return
         }
@@ -238,8 +271,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// SETTINGS SCREEN
 @Composable
 fun SettingsScreen(
     onSave: (String, String, String, String, String, String, String, String, String) -> Unit
@@ -264,14 +295,17 @@ fun SettingsScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
-            "⚙️ API Keys Settings",
-            color = JBlue, fontSize = 22.sp,
+            "API Keys Settings",
+            color = JBlue,
+            fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(top = 40.dp, bottom = 8.dp)
         )
+
         Text(
             "Apni free API keys yahan paste karein sir.",
-            color = Color.Gray, fontSize = 13.sp
+            color = Color.Gray,
+            fontSize = 13.sp
         )
 
         Row(
@@ -286,10 +320,13 @@ fun SettingsScreen(
             Text("Keys dikhao", color = Color.Gray, fontSize = 12.sp)
         }
 
-        val viz = if (showKeys) VisualTransformation.None
-                  else PasswordVisualTransformation()
+        val viz = if (showKeys) {
+            VisualTransformation.None
+        } else {
+            PasswordVisualTransformation()
+        }
 
-        KeyField("Groq API Key *", groq, viz) { groq = it }
+        KeyField("Groq API Key (zaroori)", groq, viz) { groq = it }
         KeyField("Gemini API Key", gemini, viz) { gemini = it }
         KeyField("OpenRouter API Key", openrouter, viz) { openrouter = it }
         KeyField("Cohere API Key", cohere, viz) { cohere = it }
@@ -300,14 +337,17 @@ fun SettingsScreen(
         KeyField("DeepSeek API Key", deepseek, viz) { deepseek = it }
 
         Text(
-            "* Groq key zaroori hai — baaki optional hain",
-            color = Color.Gray, fontSize = 11.sp
+            "Sirf Groq key zaroori hai — baaki optional hain",
+            color = Color.Gray,
+            fontSize = 11.sp
         )
 
         Button(
             onClick = {
-                onSave(groq, gemini, cohere, openrouter,
-                       hf, mistral, together, cerebras, deepseek)
+                onSave(
+                    groq, gemini, cohere, openrouter,
+                    hf, mistral, together, cerebras, deepseek
+                )
             },
             modifier = Modifier
                 .fillMaxWidth()
@@ -316,18 +356,17 @@ fun SettingsScreen(
             shape = RoundedCornerShape(26.dp)
         ) {
             Text(
-                "Keys Save Karo ✅",
+                "Keys Save Karo",
                 color = JDarkBlue,
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp
             )
         }
+
         Spacer(modifier = Modifier.height(24.dp))
     }
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// KEY FIELD
 @Composable
 fun KeyField(
     label: String,
@@ -354,8 +393,6 @@ fun KeyField(
     )
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// MAIN APP UI
 @Composable
 fun JuniorApp(
     messages: List<ChatMessage>,
@@ -370,10 +407,16 @@ fun JuniorApp(
     val listState = rememberLazyListState()
 
     LaunchedEffect(messages.size) {
-        if (messages.isNotEmpty()) listState.animateScrollToItem(messages.size - 1)
+        if (messages.isNotEmpty()) {
+            listState.animateScrollToItem(messages.size - 1)
+        }
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(JBg)) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(JBg)
+    ) {
         Column(modifier = Modifier.fillMaxSize()) {
 
             JuniorHeader(
@@ -391,7 +434,9 @@ fun JuniorApp(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(vertical = 12.dp)
             ) {
-                items(messages) { msg -> MessageBubble(msg) }
+                items(messages) { msg ->
+                    MessageBubble(msg)
+                }
             }
 
             if (!JuniorService.isRunning) {
@@ -404,7 +449,7 @@ fun JuniorApp(
                     shape = RoundedCornerShape(24.dp)
                 ) {
                     Text(
-                        "Junior Activate Karo 🚀",
+                        "Junior Activate Karo",
                         color = JDarkBlue,
                         fontWeight = FontWeight.Bold
                     )
@@ -425,8 +470,6 @@ fun JuniorApp(
     }
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// HEADER
 @Composable
 fun JuniorHeader(
     status: String,
@@ -436,15 +479,20 @@ fun JuniorHeader(
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "ring")
     val rotation by infiniteTransition.animateFloat(
-        initialValue = 0f, targetValue = 360f,
-        animationSpec = infiniteRepeatable(tween(3000, easing = LinearEasing)),
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            tween(3000, easing = LinearEasing)
+        ),
         label = "rotate"
     )
+
     val dotColor = when {
         isSpeaking -> JBlue
         isListening -> JRed
         else -> JGreen
     }
+
     val dotLabel = when {
         isSpeaking -> "BOL..."
         isListening -> "SUN..."
@@ -455,7 +503,9 @@ fun JuniorHeader(
         modifier = Modifier
             .fillMaxWidth()
             .background(
-                Brush.verticalGradient(listOf(Color(0xFF0D0D1A), JBg))
+                Brush.verticalGradient(
+                    listOf(Color(0xFF0D0D1A), JBg)
+                )
             )
             .padding(16.dp)
     ) {
@@ -479,13 +529,16 @@ fun JuniorHeader(
                         .rotate(-rotation * 0.7f)
                         .border(1.dp, JGreen.copy(alpha = 0.4f), CircleShape)
                 )
-                Text("🤖", fontSize = 20.sp)
+                Text("J", color = JBlue, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             }
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    "JUNIOR", color = JBlue, fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold, letterSpacing = 3.sp
+                    "JUNIOR",
+                    color = JBlue,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 3.sp
                 )
                 Text(status, color = Color.Gray, fontSize = 11.sp)
             }
@@ -498,10 +551,16 @@ fun JuniorHeader(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(5.dp)
             ) {
-                Box(modifier = Modifier.size(7.dp).background(dotColor, CircleShape))
+                Box(
+                    modifier = Modifier
+                        .size(7.dp)
+                        .background(dotColor, CircleShape)
+                )
                 Text(
-                    dotLabel, color = dotColor,
-                    fontSize = 10.sp, fontWeight = FontWeight.Bold
+                    dotLabel,
+                    color = dotColor,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold
                 )
             }
 
@@ -513,70 +572,18 @@ fun JuniorHeader(
                     .clickable { onSettings() },
                 contentAlignment = Alignment.Center
             ) {
-                Text("⚙️", fontSize = 16.sp)
+                Text("S", color = JBlue, fontSize = 14.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// MESSAGE BUBBLE
 @Composable
 fun MessageBubble(msg: ChatMessage) {
     val modelIcons = mapOf(
-        "GROQ" to "⚡", "GEMINI" to "🔵", "DEVICE" to "📱",
-        "AI" to "🧠", "JUNIOR" to "🤖", "DEEPSEEK" to "🔮",
-        "MISTRAL" to "🌟", "CEREBRAS" to "⚡"
-    )
-    Box(
-        modifier = Modifier.fillMaxWidth(),
-        contentAlignment = if (msg.isUser) Alignment.CenterEnd else Alignment.CenterStart
-    ) {
-        Column(
-            modifier = Modifier
-                .widthIn(max = 300.dp)
-                .background(
-                    if (msg.isUser)
-                        Brush.linearGradient(listOf(Color(0xFF003366), Color(0xFF0055AA)))
-                    else
-                        Brush.linearGradient(listOf(JCard, JCard)),
-                    RoundedCornerShape(
-                        topStart = 16.dp, topEnd = 16.dp,
-                        bottomStart = if (msg.isUser) 16.dp else 4.dp,
-                        bottomEnd = if (msg.isUser) 4.dp else 16.dp
-                    )
-                )
-                .border(
-                    1.dp,
-                    if (msg.isUser) Color(0xFF0066CC) else JBorder,
-                    RoundedCornerShape(16.dp)
-                )
-                .padding(12.dp)
-        ) {
-            if (!msg.isUser && msg.model.isNotEmpty()) {
-                Text(
-                    "${modelIcons[msg.model] ?: "🤖"} ${msg.model}",
-                    color = Color.Gray, fontSize = 9.sp,
-                    modifier = Modifier.padding(bottom = 4.dp)
-                )
-            }
-            Text(
-                msg.text, color = Color.White,
-                fontSize = 14.sp, lineHeight = 20.sp
-            )
-        }
-    }
-}
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// INPUT AREA
-@Composable
-fun InputArea(
-    text: String,
-    onTextChange: (String) -> Unit,
-    onSend: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color(0xFF08
+        "GROQ" to "Groq",
+        "GEMINI" to "Gemini",
+        "DEVICE" to "Device",
+        "AI" to "AI",
+        "JUNIOR" to "Junior",
+      
