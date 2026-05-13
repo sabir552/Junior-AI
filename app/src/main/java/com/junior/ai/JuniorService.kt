@@ -4,7 +4,9 @@ import android.app.*
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
 
@@ -12,7 +14,7 @@ class JuniorService : Service() {
 
     private lateinit var voiceManager: VoiceManager
     private lateinit var deviceControl: DeviceControl
-    private var isAwake = false
+    private val handler = Handler(Looper.getMainLooper())
 
     companion object {
         const val CHANNEL_ID = "junior_channel"
@@ -24,84 +26,97 @@ class JuniorService : Service() {
         super.onCreate()
         isRunning = true
         createNotificationChannel()
-        startForeground(NOTIF_ID, buildNotification("Sun raha hu... 🎤"))
-
+        startForeground(NOTIF_ID, buildNotification("Shuru ho raha hu... 🎤"))
         deviceControl = DeviceControl(this)
-        voiceManager = VoiceManager(this)
-        setupVoice()
 
-        Log.d("Junior", "Service started!")
+        Log.d("Junior", "Service onCreate")
+
+        // Thoda wait karo phir voice start karo
+        handler.postDelayed({
+            initVoice()
+        }, 2000)
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // VOICE SETUP
-    private fun setupVoice() {
+    private fun initVoice() {
+        try {
+            voiceManager = VoiceManager(this)
+            setupVoiceCallbacks()
+            handler.postDelayed({
+                voiceManager.startWakeWordListening()
+                updateNotification("\"Junior\" boliye... 🎤")
+                Log.d("Junior", "Wake word listening started!")
+            }, 1500)
+        } catch (e: Exception) {
+            Log.e("Junior", "Voice init error: ${e.message}")
+        }
+    }
+
+    private fun setupVoiceCallbacks() {
         voiceManager.onWakeWord = {
-            Log.d("Junior", "WAKE WORD!")
-            isAwake = true
-            updateNotification("Haan sir? 🎤")
-            voiceManager.speak("Haan sir?") {
-                voiceManager.startCommandListening()
+            Log.d("Junior", "WAKE WORD DETECTED!")
+            handler.post {
+                updateNotification("Haan sir? 🎤")
+                voiceManager.speak("Haan sir?") {
+                    handler.postDelayed({
+                        voiceManager.startCommandListening()
+                    }, 300)
+                }
             }
         }
 
         voiceManager.onCommand = { command ->
-            Log.d("Junior", "Command: $command")
-            isAwake = false
-            updateNotification("Kaam kar raha hu... ⚡")
-            processCommand(command)
+            Log.d("Junior", "Command received: $command")
+            handler.post {
+                updateNotification("Soch raha hu... ⚡")
+                processCommand(command)
+            }
         }
 
         voiceManager.onError = { error ->
-            isAwake = false
-            updateNotification("Sun raha hu... 🎤")
-            if (error != "no_match") {
-                voiceManager.speak(error) {
+            Log.d("Junior", "Voice error: $error")
+            handler.post {
+                updateNotification("\"Junior\" boliye... 🎤")
+                if (error != "no_match") {
+                    voiceManager.speak(error) {
+                        handler.postDelayed({
+                            voiceManager.startWakeWordListening()
+                        }, 500)
+                    }
+                } else {
                     voiceManager.startWakeWordListening()
                 }
-            } else {
-                voiceManager.startWakeWordListening()
             }
         }
-
-        // Start karo
-        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-            voiceManager.startWakeWordListening()
-        }, 1000)
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // PROCESS COMMAND
     private fun processCommand(command: String) {
         val cmd = command.lowercase()
-
         if (BrainRouter.isDeviceCommand(cmd)) {
-            // Device command — seedha execute karo
             val result = deviceControl.execute(command)
             voiceManager.speak(result) {
-                updateNotification("Sun raha hu... 🎤")
-                voiceManager.startWakeWordListening()
+                updateNotification("\"Junior\" boliye... 🎤")
+                handler.postDelayed({
+                    voiceManager.startWakeWordListening()
+                }, 500)
             }
         } else {
-            // AI se jawab lo
             BrainRouter.process(command) { response ->
-                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                handler.post {
                     voiceManager.speak(response) {
-                        updateNotification("Sun raha hu... 🎤")
-                        voiceManager.startWakeWordListening()
+                        updateNotification("\"Junior\" boliye... 🎤")
+                        handler.postDelayed({
+                            voiceManager.startWakeWordListening()
+                        }, 500)
                     }
                 }
             }
         }
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // NOTIFICATION
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
-                CHANNEL_ID,
-                "Junior AI",
+                CHANNEL_ID, "Junior AI",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
                 description = "Junior background service"
@@ -114,9 +129,8 @@ class JuniorService : Service() {
 
     private fun buildNotification(text: String): Notification {
         val intent = Intent(this, MainActivity::class.java)
-        val pi = PendingIntent.getActivity(this, 0, intent,
-            PendingIntent.FLAG_IMMUTABLE)
-
+        val pi = PendingIntent.getActivity(
+            this, 0, intent, PendingIntent.FLAG_IMMUTABLE)
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Junior AI")
             .setContentText(text)
@@ -127,13 +141,14 @@ class JuniorService : Service() {
             .build()
     }
 
-    private fun updateNotification(text: String) {
+    fun updateNotification(text: String) {
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.notify(NOTIF_ID, buildNotification(text))
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        return START_STICKY // Service band ho toh apne aap restart ho
+        Log.d("Junior", "onStartCommand")
+        return START_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -141,10 +156,16 @@ class JuniorService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         isRunning = false
-        voiceManager.destroy()
         Log.d("Junior", "Service destroyed — restarting...")
-        // Apne aap restart karo
-        val restartIntent = Intent(this, JuniorService::class.java)
-        startService(restartIntent)
+        if (::voiceManager.isInitialized) voiceManager.destroy()
+        // Auto restart
+        handler.postDelayed({
+            val intent = Intent(this, JuniorService::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(intent)
+            } else {
+                startService(intent)
+            }
+        }, 1000)
     }
 }
