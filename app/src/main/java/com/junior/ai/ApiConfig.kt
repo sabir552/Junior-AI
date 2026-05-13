@@ -1,53 +1,79 @@
 package com.junior.ai
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.util.Log
 
 object ApiConfig {
-    // Keys — pehle BuildConfig se, agar empty ho to error
-    var GROQ_KEY = ""
-    var GEMINI_KEY = ""
-    var COHERE_KEY = ""
-    var OPENROUTER_KEY = ""
-    var HUGGINGFACE_KEY = ""
-    var MISTRAL_KEY = ""
-    var TOGETHER_KEY = ""
-    var CEREBRAS_KEY = ""
-    var DEEPSEEK_KEY = ""
 
-    private var initialized = false
+    private lateinit var prefs: SharedPreferences
 
     fun init(context: Context) {
-        if (initialized) return
-        
-        // BuildConfig se load karo
-        try {
-            GROQ_KEY = BuildConfig.GROQ_API_KEY
-            GEMINI_KEY = BuildConfig.GEMINI_API_KEY
-            COHERE_KEY = BuildConfig.COHERE_API_KEY
-            OPENROUTER_KEY = BuildConfig.OPENROUTER_API_KEY
-            HUGGINGFACE_KEY = BuildConfig.HUGGINGFACE_API_KEY
-            MISTRAL_KEY = BuildConfig.MISTRAL_API_KEY
-            TOGETHER_KEY = BuildConfig.TOGETHER_API_KEY
-            CEREBRAS_KEY = BuildConfig.CEREBRAS_API_KEY
-            DEEPSEEK_KEY = BuildConfig.DEEPSEEK_API_KEY
-        } catch (e: Exception) {
-            Log.e("Junior", "BuildConfig load error: ${e.message}")
-        }
+        prefs = context.getSharedPreferences("junior_keys", Context.MODE_PRIVATE)
+        logKeys()
+    }
 
-        // Debug logging
-        Log.d("Junior", "=== API KEYS CHECK ===")
-        Log.d("Junior", "GROQ: ${if (GROQ_KEY.isEmpty()) "EMPTY!" else GROQ_KEY.take(15)}...")
-        Log.d("Junior", "GEMINI: ${if (GEMINI_KEY.isEmpty()) "EMPTY!" else GEMINI_KEY.take(15)}...")
-        Log.d("Junior", "OPENROUTER: ${if (OPENROUTER_KEY.isEmpty()) "EMPTY!" else OPENROUTER_KEY.take(15)}...")
+    // Keys SharedPreferences se aayengi
+    var GROQ_KEY: String
+        get() = prefs.getString("GROQ_KEY", "") ?: ""
+        set(v) = prefs.edit().putString("GROQ_KEY", v).apply()
 
-        // Agar sab empty hain to warning
-        if (GROQ_KEY.isEmpty() && GEMINI_KEY.isEmpty() && OPENROUTER_KEY.isEmpty()) {
-            Log.e("Junior", "❌ ALL API KEYS ARE EMPTY!")
-            Log.e("Junior", "APK mein keys properly embed nahi hui!")
-        }
+    var GEMINI_KEY: String
+        get() = prefs.getString("GEMINI_KEY", "") ?: ""
+        set(v) = prefs.edit().putString("GEMINI_KEY", v).apply()
 
-        initialized = true
+    var COHERE_KEY: String
+        get() = prefs.getString("COHERE_KEY", "") ?: ""
+        set(v) = prefs.edit().putString("COHERE_KEY", v).apply()
+
+    var OPENROUTER_KEY: String
+        get() = prefs.getString("OPENROUTER_KEY", "") ?: ""
+        set(v) = prefs.edit().putString("OPENROUTER_KEY", v).apply()
+
+    var HUGGINGFACE_KEY: String
+        get() = prefs.getString("HUGGINGFACE_KEY", "") ?: ""
+        set(v) = prefs.edit().putString("HUGGINGFACE_KEY", v).apply()
+
+    var MISTRAL_KEY: String
+        get() = prefs.getString("MISTRAL_KEY", "") ?: ""
+        set(v) = prefs.edit().putString("MISTRAL_KEY", v).apply()
+
+    var TOGETHER_KEY: String
+        get() = prefs.getString("TOGETHER_KEY", "") ?: ""
+        set(v) = prefs.edit().putString("TOGETHER_KEY", v).apply()
+
+    var CEREBRAS_KEY: String
+        get() = prefs.getString("CEREBRAS_KEY", "") ?: ""
+        set(v) = prefs.edit().putString("CEREBRAS_KEY", v).apply()
+
+    var DEEPSEEK_KEY: String
+        get() = prefs.getString("DEEPSEEK_KEY", "") ?: ""
+        set(v) = prefs.edit().putString("DEEPSEEK_KEY", v).apply()
+
+    fun keysSet(): Boolean = GROQ_KEY.isNotEmpty() || OPENROUTER_KEY.isNotEmpty()
+
+    fun saveAllKeys(
+        groq: String, gemini: String, cohere: String,
+        openrouter: String, huggingface: String, mistral: String,
+        together: String, cerebras: String, deepseek: String
+    ) {
+        GROQ_KEY = groq.trim()
+        GEMINI_KEY = gemini.trim()
+        COHERE_KEY = cohere.trim()
+        OPENROUTER_KEY = openrouter.trim()
+        HUGGINGFACE_KEY = huggingface.trim()
+        MISTRAL_KEY = mistral.trim()
+        TOGETHER_KEY = together.trim()
+        CEREBRAS_KEY = cerebras.trim()
+        DEEPSEEK_KEY = deepseek.trim()
+        logKeys()
+    }
+
+    private fun logKeys() {
+        Log.d("Junior", "=== KEYS ===")
+        Log.d("Junior", "GROQ: ${if(GROQ_KEY.isEmpty()) "EMPTY" else GROQ_KEY.take(12)}...")
+        Log.d("Junior", "GEMINI: ${if(GEMINI_KEY.isEmpty()) "EMPTY" else GEMINI_KEY.take(12)}...")
+        Log.d("Junior", "OPENROUTER: ${if(OPENROUTER_KEY.isEmpty()) "EMPTY" else OPENROUTER_KEY.take(12)}...")
     }
 
     // Models
