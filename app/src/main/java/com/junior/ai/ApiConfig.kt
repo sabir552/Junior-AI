@@ -1,24 +1,54 @@
 package com.junior.ai
 
 import android.content.Context
-import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
-
-val Context.dataStore by preferencesDataStore(name = "junior_prefs")
+import android.util.Log
 
 object ApiConfig {
-    // BuildConfig se keys aayengi (GitHub Secrets se)
-    var GROQ_KEY = BuildConfig.GROQ_API_KEY
-    var GEMINI_KEY = BuildConfig.GEMINI_API_KEY
-    var COHERE_KEY = BuildConfig.COHERE_API_KEY
-    var OPENROUTER_KEY = BuildConfig.OPENROUTER_API_KEY
-    var HUGGINGFACE_KEY = BuildConfig.HUGGINGFACE_API_KEY
-    var MISTRAL_KEY = BuildConfig.MISTRAL_API_KEY
-    var TOGETHER_KEY = BuildConfig.TOGETHER_API_KEY
-    var CEREBRAS_KEY = BuildConfig.CEREBRAS_API_KEY
-    var DEEPSEEK_KEY = BuildConfig.DEEPSEEK_API_KEY
+    // Keys — pehle BuildConfig se, agar empty ho to error
+    var GROQ_KEY = ""
+    var GEMINI_KEY = ""
+    var COHERE_KEY = ""
+    var OPENROUTER_KEY = ""
+    var HUGGINGFACE_KEY = ""
+    var MISTRAL_KEY = ""
+    var TOGETHER_KEY = ""
+    var CEREBRAS_KEY = ""
+    var DEEPSEEK_KEY = ""
+
+    private var initialized = false
+
+    fun init(context: Context) {
+        if (initialized) return
+        
+        // BuildConfig se load karo
+        try {
+            GROQ_KEY = BuildConfig.GROQ_API_KEY
+            GEMINI_KEY = BuildConfig.GEMINI_API_KEY
+            COHERE_KEY = BuildConfig.COHERE_API_KEY
+            OPENROUTER_KEY = BuildConfig.OPENROUTER_API_KEY
+            HUGGINGFACE_KEY = BuildConfig.HUGGINGFACE_API_KEY
+            MISTRAL_KEY = BuildConfig.MISTRAL_API_KEY
+            TOGETHER_KEY = BuildConfig.TOGETHER_API_KEY
+            CEREBRAS_KEY = BuildConfig.CEREBRAS_API_KEY
+            DEEPSEEK_KEY = BuildConfig.DEEPSEEK_API_KEY
+        } catch (e: Exception) {
+            Log.e("Junior", "BuildConfig load error: ${e.message}")
+        }
+
+        // Debug logging
+        Log.d("Junior", "=== API KEYS CHECK ===")
+        Log.d("Junior", "GROQ: ${if (GROQ_KEY.isEmpty()) "EMPTY!" else GROQ_KEY.take(15)}...")
+        Log.d("Junior", "GEMINI: ${if (GEMINI_KEY.isEmpty()) "EMPTY!" else GEMINI_KEY.take(15)}...")
+        Log.d("Junior", "OPENROUTER: ${if (OPENROUTER_KEY.isEmpty()) "EMPTY!" else OPENROUTER_KEY.take(15)}...")
+
+        // Agar sab empty hain to warning
+        if (GROQ_KEY.isEmpty() && GEMINI_KEY.isEmpty() && OPENROUTER_KEY.isEmpty()) {
+            Log.e("Junior", "❌ ALL API KEYS ARE EMPTY!")
+            Log.e("Junior", "APK mein keys properly embed nahi hui!")
+        }
+
+        initialized = true
+    }
 
     // Models
     const val GROQ_MODEL = "llama-3.3-70b-versatile"
